@@ -180,6 +180,12 @@
   .gact{appearance:none;border:1px solid var(--bone-e);background:#fbf8f0;color:var(--ink2);font-family:var(--body);font-size:11.5px;letter-spacing:.05em;padding:5px 10px;border-radius:7px;cursor:pointer;}
   .gact:hover{background:#f0ead9;}
   .gact.del:hover{background:rgba(194,58,46,.14);border-color:rgba(194,58,46,.5);color:var(--red-d);}
+  .gact.hrestore{border-color:rgba(176,141,87,.6);color:var(--ink);} .gact.hrestore:hover{background:rgba(176,141,87,.16);}
+  .gact.revive{border-color:rgba(90,140,90,.6);color:#2f5d2f;} .gact.revive:hover{background:rgba(90,140,90,.16);}
+  .gedited{font-family:var(--body);font-size:10.5px;color:var(--gold);letter-spacing:.03em;margin-left:6px;}
+  .del-head{font-family:var(--disp);font-weight:700;font-size:12px;letter-spacing:.08em;color:rgba(236,227,208,.6);margin:18px 0 8px;text-transform:none;}
+  .dgame{background:#e6dfcf;border:1px dashed var(--bone-e);border-radius:11px;padding:12px 14px;color:var(--ink);opacity:.85;}
+  .dgame .gfin,.dgame .gnames,.dgame .gsplit{filter:saturate(.55);}
   .grows{display:flex;flex-direction:column;gap:6px;}
   .grow{display:grid;grid-template-columns:24px 1fr auto;gap:10px;align-items:center;padding:5px 2px;border-bottom:1px solid rgba(30,37,27,.08);}
   .grow:last-child{border-bottom:none;}
@@ -252,7 +258,7 @@
     <details class="settings" id="verSettings">
       <summary><span class="msum-mark"></span><span class="msum-title">変更履歴</span><span class="msum-count" id="verCount"></span></summary>
       <div class="settings-body">
-        <p class="ver-note">各変更の直前を保存（最新20件）｡選択で全体をその時点へ復元｡復元自体も巻き戻し可能｡</p>
+        <p class="ver-note">各変更の直前を保存(最新20件)｡選択で全体をその時点へ復元｡復元自体も巻き戻し可能｡</p>
         <div class="ver-list" id="verList"></div>
       </div>
     </details>
@@ -270,18 +276,25 @@
     <div class="modal-opts" id="fracOpts"></div>
   </div>
 </div>
+<div class="modal" id="histModal" hidden>
+  <div class="modal-box">
+    <div class="modal-title">この半荘の履歴</div>
+    <div class="modal-sub" id="hmSub"></div>
+    <div class="modal-opts" id="hmOpts"></div>
+  </div>
+</div>
 
 <script>
 (function(){
   "use strict";
-  // ===== 設定（ここを編集）=====
-  // CloudflareワーカーのURL（末尾スラッシュ不要）｡空または未置換ならローカルのみ動作
+  // ===== 設定(ここを編集)=====
+  // CloudflareワーカーのURL(末尾スラッシュ不要)｡空または未置換ならローカルのみ動作
   var WORKER_URL = "https://score.1059rihara.workers.dev";
   // 書込み保護を使う場合のキー｡WorkerのBOARD_SECRETと一致させる｡未使用なら空のまま
   var BOARD_KEY  = "";
   // 既定の卓ルームID｡URLに ?room=xxx を付けると上書き｡グループごとに分離可能
   var DEFAULT_ROOM = "default";
-  // URLクエリでの上書き（?api=...&room=...&key=...）も許容
+  // URLクエリでの上書き(?api=...&room=...&key=...)も許容
   var _q = new URLSearchParams(location.search);
   WORKER_URL = (_q.get("api")||WORKER_URL||"").replace(/\/+$/,"");
   BOARD_KEY  = _q.get("key")||BOARD_KEY||"";
@@ -313,6 +326,8 @@
   }
   function valid(st){return st&&Array.isArray(st.players)&&Array.isArray(st.games);}
   function validGame(g){return g&&Array.isArray(g.seats)&&g.seats.length===4&&g.seats.every(function(s){return s&&Array.isArray(s.players)&&typeof s.score==="number";});}
+  function isActive(g){return validGame(g)&&!g.deleted;}
+  function activeCount(s){return s&&Array.isArray(s.games)?s.games.filter(isActive).length:0;}
   function normalize(raw){
     if(raw&&Array.isArray(raw.sessions)){
       var ss=raw.sessions.filter(valid).map(function(s){return {id:s.id||uid("s_"),label:s.label||"",ts:s.ts||Date.now(),players:s.players,games:s.games};});
@@ -357,14 +372,15 @@
   }
 
   function computeStats(){
-    var s={}; state.players.forEach(function(p){s[p.id]={total:0,played:0,tops:0};});
+    var s={}; state.players.forEach(function(p){s[p.id]={total:0,played:0,tops:0,ranks:[0,0,0,0]};});
     state.games.forEach(function(g){
-      if(!validGame(g))return;
+      if(!isActive(g))return;
       var res=computeGame(g.seats);
       res.forEach(function(seat){
         seat.players.forEach(function(pid){
           if(!s[pid])return;
           s[pid].total+=seat.shares[pid]; s[pid].played++; if(seat.rank===1)s[pid].tops++;
+          if(seat.rank>=1&&seat.rank<=4)s[pid].ranks[seat.rank-1]++;
         });
       });
     });
@@ -393,7 +409,7 @@
   function loadInitial(){
     if(!hasWorker){
       adopt(cacheGet()||normalize(null));
-      setSync("off","ローカルのみ（WORKER_URL未設定）");
+      setSync("off","ローカルのみ(WORKER_URL未設定)");
       return Promise.resolve();
     }
     return apiGet().then(function(r){
@@ -449,27 +465,27 @@
       setSync("warn","保存失敗"); toast("保存に失敗｡通信を確認し再操作");
     });
   }
-  // セッション内の変更用ラッパ（現在の卓に適用）
+  // セッション内の変更用ラッパ(現在の卓に適用)
   function commit(fn,label){ return commitRoot(function(rt){ var s=currentSession(rt); if(s)fn(s); return rt; }, label); }
 
   // ---- render: standings ----
   function renderStandings(){
     var s=computeStats();
-    var rows=state.players.map(function(p){var st=s[p.id];return {p:p,total:round1(st.total),played:st.played,tops:st.tops};});
+    var rows=state.players.map(function(p){var st=s[p.id];return {p:p,total:round1(st.total),played:st.played,tops:st.tops,ranks:st.ranks};});
     rows.sort(function(a,b){if(b.total!==a.total)return b.total-a.total;return b.tops-a.tops;});
     var maxAbs=1; rows.forEach(function(r){if(Math.abs(r.total)>maxAbs)maxAbs=Math.abs(r.total);});
     document.getElementById("totalList").innerHTML=rows.map(function(r,i){
       var rank=i+1, rcls=rank===2?"r2":rank===3?"r3":"", bar="";
       if(r.total!==0){var w=Math.min(50,Math.abs(r.total)/maxAbs*50);
         bar=r.total>0?'<span class="bfill pos" style="left:50%;width:'+w+'%"></span>':'<span class="bfill neg" style="left:'+(50-w)+'%;width:'+w+'%"></span>';}
-      var sub=r.played>0?(r.played+"半荘 ・ トップ"+r.tops):"記録なし";
+      var sub=r.played>0?(r.played+"半荘 ・ "+r.ranks.join("-")):"記録なし";
       return '<div class="stand'+(rank===1&&r.played>0?" lead":"")+'">'+
         '<div class="rank '+rcls+'">'+rank+'</div>'+
         '<div class="who"><div class="name">'+esc(r.p.name)+'</div><div class="sub">'+sub+'</div></div>'+
         '<div class="total '+scoreClass(r.total)+'">'+(r.played>0?fmt(r.total):"\u00B10")+'</div>'+
         '<div class="bar">'+bar+'</div></div>';
     }).join("");
-    document.getElementById("histNote").textContent="全 "+state.games.length+" 半荘";
+    document.getElementById("histNote").textContent="全 "+state.games.filter(isActive).length+" 半荘";
   }
 
   // ---- render: entry seats ----
@@ -549,7 +565,7 @@
       pv.innerHTML='<div class="pv-seats">'+sorted.map(function(r){
         var pair=r.players.length>1, odd=pair&&(r.score%2!==0);
         var nm=r.players.map(nameOf).map(esc).join(" ・ ");
-        var splitTxt = pair ? (odd ? (fmt((r.score-1)/2)+" / "+fmt((r.score-1)/2+1)+"（端数は記録時に選択）") : "各 "+fmt(r.score/2)) : "";
+        var splitTxt = pair ? (odd ? (fmt((r.score-1)/2)+" / "+fmt((r.score-1)/2+1)+"(端数は記録時に選択)") : "各 "+fmt(r.score/2)) : "";
         return '<div class="pseat'+(r.rank===1?" win":"")+'">'+
           '<span class="pp">'+r.rank+'</span>'+
           '<div class="pinfo"><div class="pnames">'+nm+'</div>'+
@@ -563,28 +579,40 @@
   }
 
   // ---- render: history ----
+  function gameRowsHTML(g){
+    if(!validGame(g))return '<div class="gsub">データ形式が不正</div>';
+    var res=computeGame(g.seats);
+    return res.slice().sort(function(a,b){return a.rank-b.rank||b.score-a.score;}).map(function(r){
+      var pair=r.players.length>1; var nm=r.players.map(nameOf).map(esc).join(" ・ ");
+      var splitTxt=pair?r.players.map(function(pid){return fmt(r.shares[pid]);}).join(" ・ "):"";
+      return '<div class="grow'+(r.rank===1?" win":"")+'">'+
+        '<span class="grank">'+r.rank+'</span>'+
+        '<div><div class="gnames">'+nm+'</div></div>'+
+        '<div class="gright"><div class="gfin '+scoreClass(r.finalSeat)+'">'+fmt(r.finalSeat)+'</div>'+
+          (pair?'<div class="gsplit">'+splitTxt+'</div>':'')+'</div></div>';
+    }).join("");
+  }
   function renderHistory(){
     var list=document.getElementById("histList");
-    if(!state.games.length){list.innerHTML='<div class="empty">記録なし｡上の入力欄から半荘を追加｡</div>';return;}
-    var games=state.games.slice().sort(function(a,b){return b.ts-a.ts;});
-    list.innerHTML=games.map(function(g){
-      var rows="";
-      if(validGame(g)){
-        var res=computeGame(g.seats);
-        rows=res.slice().sort(function(a,b){return a.rank-b.rank||b.score-a.score;}).map(function(r){
-          var pair=r.players.length>1; var nm=r.players.map(nameOf).map(esc).join(" ・ ");
-          var splitTxt=pair?r.players.map(function(pid){return fmt(r.shares[pid]);}).join(" ・ "):"";
-          return '<div class="grow'+(r.rank===1?" win":"")+'">'+
-            '<span class="grank">'+r.rank+'</span>'+
-            '<div><div class="gnames">'+nm+'</div>'+(pair?'<div class="gsub">2人で折半</div>':'')+'</div>'+
-            '<div class="gright"><div class="gfin '+scoreClass(r.finalSeat)+'">'+fmt(r.finalSeat)+'</div>'+
-              (pair?'<div class="gsplit">'+splitTxt+'</div>':'')+'</div></div>';
-        }).join("");
-      } else { rows='<div class="gsub">データ形式が不正</div>'; }
-      return '<div class="game" data-gid="'+g.id+'"><div class="game-head"><span class="game-date">'+fmtDate(g.ts)+'</span>'+
-        '<span class="game-acts"><button class="gact edit" type="button">編集</button><button class="gact del" type="button">削除</button></span></div>'+
-        '<div class="grows">'+rows+'</div></div>';
+    var actives=state.games.filter(isActive).sort(function(a,b){return b.ts-a.ts;});
+    var deleted=state.games.filter(function(g){return validGame(g)&&g.deleted;}).sort(function(a,b){return b.ts-a.ts;});
+    if(!actives.length&&!deleted.length){list.innerHTML='<div class="empty">記録なし｡上の入力欄から半荘を追加｡</div>';return;}
+    var html=actives.map(function(g){
+      var nver=Array.isArray(g.vers)?g.vers.length:0;
+      var restoreBtn=nver>0?'<button class="gact hrestore" type="button">戻す</button>':'';
+      return '<div class="game" data-gid="'+g.id+'"><div class="game-head"><span class="game-date">'+fmtDate(g.ts)+(nver>0?' <span class="gedited">編集'+nver+'回</span>':'')+'</span>'+
+        '<span class="game-acts">'+restoreBtn+'<button class="gact edit" type="button">編集</button><button class="gact del" type="button">削除</button></span></div>'+
+        '<div class="grows">'+gameRowsHTML(g)+'</div></div>';
     }).join("");
+    if(!actives.length)html='<div class="empty">表示できる半荘なし｡下に削除済みあり｡</div>';
+    if(deleted.length){
+      html+='<div class="del-head">削除済み（'+deleted.length+'）</div>'+deleted.map(function(g){
+        return '<div class="dgame" data-gid="'+g.id+'"><div class="game-head"><span class="game-date">'+fmtDate(g.ts)+'</span>'+
+          '<span class="game-acts"><button class="gact revive" type="button">復活</button></span></div>'+
+          '<div class="grows">'+gameRowsHTML(g)+'</div></div>';
+      }).join("");
+    }
+    list.innerHTML=html;
   }
 
   function renderSession(){
@@ -592,7 +620,7 @@
     var opts=root.sessions.filter(function(s){return s.games.length>0||s.id===root.currentId;}).sort(function(a,b){return b.ts-a.ts;});
     sel.innerHTML=opts.map(function(s){
       var label=s.label||fmtDay(s.ts);
-      return '<option value="'+s.id+'"'+(s.id===root.currentId?" selected":"")+'>'+esc(label)+'（'+s.games.length+'半荘）</option>';
+      return '<option value="'+s.id+'"'+(s.id===root.currentId?" selected":"")+'>'+esc(label)+'('+activeCount(s)+'半荘)</option>';
     }).join("");
   }
   function renderVersions(){
@@ -602,7 +630,7 @@
     box.innerHTML=h.slice().reverse().map(function(v,i){
       var idx=h.length-1-i;
       return '<div class="ver-row" data-idx="'+idx+'">'+
-        '<div class="ver-info"><div class="ver-when">'+fmtDate(v.ts)+'</div><div class="ver-label">「'+esc(v.label||"変更")+'」の直前</div></div>'+
+        '<div class="ver-info"><div class="ver-when">'+fmtDate(v.ts)+'</div><div class="ver-label">｢'+esc(v.label||"変更")+'｣の直前</div></div>'+
         '<button class="ver-restore" type="button">この時点へ復元</button></div>';
     }).join("");
     document.getElementById("verCount").textContent=h.length+"件";
@@ -626,10 +654,15 @@
       commit(function(st){
         if(editId){
           var g=st.games.filter(function(x){return x.id===editId;})[0];
-          if(g){g.seats=seatsData;g.computedSeat=bi;}
-          else st.games.push({id:newId,ts:ts,seats:seatsData,computedSeat:bi});
+          if(g){
+            g.vers=Array.isArray(g.vers)?g.vers:[];
+            g.vers.push({ts:Date.now(),seats:clone(g.seats),computedSeat:g.computedSeat});
+            if(g.vers.length>10)g.vers=g.vers.slice(-10);
+            g.seats=seatsData; g.computedSeat=bi;
+          }
+          else st.games.push({id:newId,ts:ts,seats:seatsData,computedSeat:bi,vers:[],deleted:false});
         } else {
-          st.games.push({id:newId,ts:ts,seats:seatsData,computedSeat:bi});
+          st.games.push({id:newId,ts:ts,seats:seatsData,computedSeat:bi,vers:[],deleted:false});
         }
         return st;
       }, editId?"編集":"記録");
@@ -638,12 +671,47 @@
     if(!queue.length){ finish(); return; }
     resolveFractions(queue,seatsData,finish);
   }
+  function halfSummary(seats){
+    if(!seats||seats.length!==4)return "";
+    var top=computeGame(seats).slice().sort(function(a,b){return a.rank-b.rank||b.score-a.score;})[0];
+    return top?(top.players.map(nameOf).join("・")+" "+fmt(top.finalSeat)):"";
+  }
+  function openHalfHistory(gid){
+    var g=state.games.filter(function(x){return x.id===gid;})[0];
+    if(!g||!Array.isArray(g.vers)||!g.vers.length){toast("前の内容なし");return;}
+    var modal=document.getElementById("histModal");
+    document.getElementById("hmSub").textContent="この半荘を過去の内容へ戻す｡現在の内容は退避され再度戻せる｡他の半荘は不変｡";
+    var opts=document.getElementById("hmOpts"); opts.innerHTML="";
+    g.vers.slice().reverse().forEach(function(v,i){
+      var idx=g.vers.length-1-i;
+      var btn=document.createElement("button"); btn.className="modal-opt"; btn.type="button";
+      btn.innerHTML='<span>'+esc(fmtDate(v.ts))+'</span><span class="mo-val">'+esc(halfSummary(v.seats))+'</span>';
+      btn.onclick=function(){ doHalfRestore(gid,idx); modal.hidden=true; };
+      opts.appendChild(btn);
+    });
+    var cancel=document.createElement("button"); cancel.className="modal-cancel"; cancel.type="button"; cancel.textContent="やめる";
+    cancel.onclick=function(){ modal.hidden=true; };
+    opts.appendChild(cancel);
+    modal.hidden=false;
+  }
+  function doHalfRestore(gid,verIdx){
+    if(editingGameId===gid)exitEdit();
+    commit(function(st){
+      var g=st.games.filter(function(x){return x.id===gid;})[0]; if(!g)return st;
+      var vers=Array.isArray(g.vers)?g.vers:[]; var v=vers[verIdx]; if(!v)return st;
+      vers.push({ts:Date.now(),seats:clone(g.seats),computedSeat:g.computedSeat});
+      g.seats=clone(v.seats); g.computedSeat=v.computedSeat;
+      if(vers.length>10)vers=vers.slice(-10);
+      g.vers=vers; return st;
+    }, "半荘復元");
+    toast("半荘を復元");
+  }
   function resolveFractions(queue,seatsData,done){
     var modal=document.getElementById("fracModal"), i=0;
     function step(){
       if(i>=queue.length){ modal.hidden=true; done(); return; }
       var q=queue[i];
-      document.getElementById("fracSub").textContent="卓スコア "+fmt(q.score)+"｡2で割り切れないため、多い方（"+fmt(q.lo+1)+"）を受け取る人を選択｡もう一方は "+fmt(q.lo)+"｡";
+      document.getElementById("fracSub").textContent="卓スコア "+fmt(q.score)+"｡2で割り切れないため､多い方("+fmt(q.lo+1)+")を受け取る人を選択｡もう一方は "+fmt(q.lo)+"｡";
       var opts=document.getElementById("fracOpts"); opts.innerHTML="";
       q.players.forEach(function(pid){
         var btn=document.createElement("button"); btn.className="modal-opt"; btn.type="button";
@@ -696,7 +764,7 @@
       commitRoot(function(rt){ if(rt.sessions.some(function(s){return s.id===id;}))rt.currentId=id; return pruneEmpty(rt,rt.currentId); }, "卓切替");
     });
     document.getElementById("newSessionBtn").addEventListener("click",function(){
-      var keep=confirm("新しい卓を開始｡\n\nメンバーを引き継ぐ → OK\n空（メンバーなし）から → キャンセル");
+      var keep=confirm("新しい卓を開始｡\n\nメンバーを引き継ぐ → OK\n空(メンバーなし)から → キャンセル");
       if(editingGameId)exitEdit();
       commitRoot(function(rt){
         var cur=rt.sessions.filter(function(s){return s.id===rt.currentId;})[0];
@@ -736,14 +804,19 @@
     document.getElementById("amCancel").addEventListener("click",closeAddMember);
 
     document.getElementById("histList").addEventListener("click",function(e){
-      var item=e.target.closest(".game"); if(!item)return; var gid=item.dataset.gid;
+      var item=e.target.closest(".game,.dgame"); if(!item)return; var gid=item.dataset.gid;
       if(e.target.classList.contains("del")){
-        if(!confirm("この半荘を削除する｡"))return;
-        if(!confirm("確認｡この半荘を削除する｡変更履歴から復元可能｡"))return;
+        if(!confirm("この半荘を削除する｡他の半荘は保持｡"))return;
         if(editingGameId===gid)exitEdit();
-        commit(function(st){st.games=st.games.filter(function(x){return x.id!==gid;}); return st;}, "半荘削除");
+        commit(function(st){var g=st.games.filter(function(x){return x.id===gid;})[0]; if(g)g.deleted=true; return st;}, "半荘削除");
         toast("半荘を削除");
-      } else if(e.target.classList.contains("edit")){ enterEdit(gid); }
+      } else if(e.target.classList.contains("edit")){ enterEdit(gid);
+      } else if(e.target.classList.contains("revive")){
+        commit(function(st){var g=st.games.filter(function(x){return x.id===gid;})[0]; if(g)g.deleted=false; return st;}, "半荘復活");
+        toast("半荘を復活");
+      } else if(e.target.classList.contains("hrestore")){
+        openHalfHistory(gid);
+      }
     });
 
     document.getElementById("syncBtn").addEventListener("click",function(){
@@ -766,7 +839,7 @@
       var b=e.target.closest(".ver-restore"); if(!b)return;
       var idx=+b.closest(".ver-row").dataset.idx;
       var h=(root&&root.history)||[]; var v=h[idx]; if(!v||!v.snap)return;
-      if(!confirm("この時点（"+fmtDate(v.ts)+"「"+(v.label||"変更")+"」の直前）へ復元する｡現在の内容は上書きされる｡"))return;
+      if(!confirm("この時点("+fmtDate(v.ts)+"｢"+(v.label||"変更")+"｣の直前)へ復元する｡現在の内容は上書きされる｡"))return;
       if(!confirm("確認｡全体をこの時点へ巻き戻す｡この復元も変更履歴から取り消し可能｡"))return;
       var snap=v.snap; if(editingGameId)exitEdit();
       commitRoot(function(rt){ rt.sessions=clone(snap.sessions); rt.currentId=snap.currentId; return rt; }, "復元");
