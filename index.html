@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>麻雀スコア管理表</title>
+<title>雀荘りはら</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@600;800&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -27,23 +27,28 @@
   }
   .wrap{max-width:760px;margin:0 auto;padding:22px 16px 64px;}
 
-  .topbar{display:flex;flex-wrap:wrap;align-items:flex-end;gap:14px 18px;margin-bottom:26px;}
-  .brand{flex:1 1 auto;min-width:0;}
-  .brand-title{font-family:var(--disp);font-weight:800;font-size:clamp(28px,7vw,40px);letter-spacing:.06em;line-height:1.05;margin:0;}
+  .topbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px 12px;margin-bottom:24px;}
+  .brand-title{font-family:var(--disp);font-weight:800;font-size:clamp(22px,6.4vw,32px);letter-spacing:.05em;line-height:1.05;margin:0;white-space:nowrap;}
   .brand-title .dot{color:var(--red);}
-  .brand-sub{margin:6px 0 0;font-size:12.5px;letter-spacing:.14em;color:rgba(236,227,208,.62);}
-  .winds{display:flex;gap:6px;margin-top:12px;}
-  .wind{width:26px;height:34px;border-radius:4px;background:linear-gradient(#f3ecdb,var(--bone));border:1px solid var(--bone-e);
-    box-shadow:0 2px 0 var(--bone-e),0 4px 8px rgba(0,0,0,.28);display:grid;place-items:center;font-family:var(--disp);font-weight:800;font-size:17px;color:var(--ink);}
+  .winds{display:flex;gap:5px;}
+  .wind{width:24px;height:30px;border-radius:4px;background:linear-gradient(#f3ecdb,var(--bone));border:1px solid var(--bone-e);
+    box-shadow:0 2px 0 var(--bone-e),0 3px 7px rgba(0,0,0,.26);display:grid;place-items:center;font-family:var(--disp);font-weight:800;font-size:15px;color:var(--ink);}
   .wind.n1{color:var(--red-d);}
-  .sync{display:flex;align-items:center;gap:10px;}
-  .sync-state{display:flex;align-items:center;gap:7px;font-size:11.5px;letter-spacing:.1em;color:rgba(236,227,208,.6);}
-  .sync-dot{width:8px;height:8px;border-radius:50%;background:var(--jade);box-shadow:0 0 0 3px rgba(46,136,90,.22);}
-  .sync-dot.warn{background:var(--gold);box-shadow:0 0 0 3px rgba(198,160,44,.22);}
-  .sync-dot.off{background:#7a8478;box-shadow:none;}
-  .ibtn{appearance:none;border:1px solid var(--felt-line);background:rgba(236,227,208,.06);color:var(--bone);
-    font-family:var(--body);font-size:12.5px;letter-spacing:.06em;padding:8px 13px;border-radius:8px;cursor:pointer;transition:background .15s,border-color .15s;}
-  .ibtn:hover{background:rgba(236,227,208,.13);border-color:rgba(236,227,208,.3);}
+  .ibtn-ico{margin-left:auto;flex:0 0 auto;width:40px;height:40px;display:grid;place-items:center;
+    border:1px solid var(--felt-line);background:rgba(236,227,208,.06);color:var(--bone);border-radius:9px;cursor:pointer;
+    transition:background .15s,border-color .15s,color .15s;}
+  .ibtn-ico:hover{background:rgba(236,227,208,.13);border-color:rgba(236,227,208,.3);}
+  .ibtn-ico:active svg{transform:rotate(180deg);transition:transform .3s;}
+  .ibtn-ico.warn{color:var(--gold);border-color:rgba(198,160,44,.5);}
+  .sessionbar{display:flex;gap:10px;align-items:center;margin-bottom:22px;}
+  .sess-sel{flex:1 1 auto;min-width:0;font-family:var(--disp);font-weight:600;font-size:15px;color:var(--bone);
+    background:rgba(236,227,208,.06);border:1px solid var(--felt-line);border-radius:9px;padding:11px 12px;
+    -webkit-appearance:none;appearance:none;
+    background-image:linear-gradient(45deg,transparent 50%,rgba(236,227,208,.6) 50%),linear-gradient(135deg,rgba(236,227,208,.6) 50%,transparent 50%);
+    background-position:calc(100% - 18px) calc(50% - 2px),calc(100% - 13px) calc(50% - 2px);background-size:5px 5px,5px 5px;background-repeat:no-repeat;padding-right:34px;}
+  .sess-new{flex:0 0 auto;appearance:none;cursor:pointer;font-family:var(--body);font-size:13px;letter-spacing:.04em;font-weight:600;
+    border:1px solid var(--bone-e);background:linear-gradient(180deg,#f1eadb,var(--bone));color:var(--ink);padding:11px 14px;border-radius:9px;white-space:nowrap;}
+  .sess-new:hover{filter:brightness(1.03);}
 
   .sec{margin-bottom:30px;}
   .sec-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:0 2px 13px;}
@@ -102,24 +107,26 @@
   .card.editing{border-color:var(--red);box-shadow:0 1px 0 #fff inset,0 0 0 1px var(--red),0 8px 18px rgba(0,0,0,.26);}
   .edit-flag{font-size:12px;letter-spacing:.1em;color:var(--red-d);margin:0 0 13px;font-weight:600;display:none;}
   .card.editing .edit-flag{display:block;}
-  .seat{border:1px solid rgba(30,37,27,.12);border-radius:10px;padding:11px 12px;margin-bottom:9px;background:#fbf8f0;}
+  .seat{border:1px solid rgba(30,37,27,.12);border-radius:10px;padding:8px 9px;margin-bottom:8px;background:#fbf8f0;display:flex;gap:6px;align-items:stretch;}
   .seat.is-auto{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold);}
-  .seat-pl{display:flex;gap:8px;}
-  .seat-p{flex:1 1 0;min-width:0;font-family:var(--body);font-size:14px;padding:9px 10px;border-radius:8px;border:1px solid var(--bone-e);background:#fff;color:var(--ink);
+  .seat-p{flex:1 1 0;min-width:0;font-family:var(--body);font-size:13px;padding:9px 7px;border-radius:8px;border:1px solid var(--bone-e);background:#fff;color:var(--ink);
     -webkit-appearance:none;appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--ink2) 50%),linear-gradient(135deg,var(--ink2) 50%,transparent 50%);
-    background-position:calc(100% - 16px) calc(50% - 2px),calc(100% - 11px) calc(50% - 2px);background-size:5px 5px,5px 5px;background-repeat:no-repeat;padding-right:30px;}
-  .seat-score{margin-top:9px;display:flex;gap:8px;align-items:stretch;}
-  .seat-sign{flex:0 0 auto;width:50px;appearance:none;cursor:pointer;border:1px solid var(--bone-e);border-radius:8px;background:#fff;color:var(--ink2);
-    font-family:var(--mono);font-weight:700;font-size:19px;line-height:1;transition:background .12s,color .12s,border-color .12s;}
+    background-position:calc(100% - 12px) calc(50% - 2px),calc(100% - 8px) calc(50% - 2px);background-size:4px 4px,4px 4px;background-repeat:no-repeat;padding-right:20px;}
+  .seat-sign{flex:0 0 auto;width:36px;appearance:none;cursor:pointer;border:1px solid var(--bone-e);border-radius:8px;background:#fff;color:var(--ink2);
+    font-family:var(--mono);font-weight:700;font-size:17px;line-height:1;padding:0;transition:background .12s,color .12s,border-color .12s;}
   .seat-sign.neg{background:linear-gradient(180deg,#d0473a,var(--red));color:#fff;border-color:var(--red-d);}
   .seat.is-auto .seat-sign{display:none;}
-  .seat-raw{font-family:var(--mono);font-weight:500;font-size:17px;font-variant-numeric:tabular-nums;flex:1 1 auto;min-width:0;text-align:right;
-    padding:9px 12px;border-radius:8px;border:1px solid var(--bone-e);background:#fff;color:var(--ink);box-shadow:inset 0 1px 2px rgba(30,37,27,.1);}
-  .seat-raw::placeholder{color:#b3a98f;font-weight:400;}
-  .seat-auto{display:none;font-family:var(--mono);font-weight:700;font-size:17px;font-variant-numeric:tabular-nums;flex:1 1 auto;text-align:right;
-    color:#3a2c05;background:linear-gradient(180deg,var(--gold-l),var(--gold));padding:9px 12px;border-radius:8px;}
+  .seat-raw{font-family:var(--mono);font-weight:600;font-size:16px;font-variant-numeric:tabular-nums;flex:0 0 60px;width:60px;min-width:0;text-align:right;
+    padding:9px 8px;border-radius:8px;border:1px solid var(--bone-e);background:#fff;color:var(--ink);box-shadow:inset 0 1px 2px rgba(30,37,27,.1);}
+  .seat-raw::placeholder{color:#b3a98f;font-weight:400;font-size:11px;}
+  .seat-auto{display:none;font-family:var(--mono);font-weight:700;font-size:16px;font-variant-numeric:tabular-nums;flex:0 0 60px;width:60px;text-align:right;
+    color:#3a2c05;background:linear-gradient(180deg,var(--gold-l),var(--gold));padding:9px 8px;border-radius:8px;}
   .seat.is-auto .seat-raw{display:none;} .seat.is-auto .seat-auto{display:block;}
-  .seat-hint{font-size:11px;letter-spacing:.05em;color:var(--ink2);margin:2px 2px 14px;}
+  .addmember{display:flex;gap:7px;margin:2px 0 12px;}
+  .addmember[hidden]{display:none;}
+  .am-input{flex:1 1 auto;min-width:0;font-family:var(--body);font-size:15px;padding:10px 11px;border-radius:8px;border:1px solid var(--bone-e);background:#fff;color:var(--ink);box-shadow:inset 0 1px 2px rgba(30,37,27,.1);}
+  .am-add{flex:0 0 auto;appearance:none;cursor:pointer;border:none;font-family:var(--disp);font-weight:600;font-size:14px;letter-spacing:.06em;color:#fff;background:linear-gradient(180deg,#d0473a,var(--red));box-shadow:0 2px 0 var(--red-d);padding:10px 16px;border-radius:8px;}
+  .am-cancel{flex:0 0 auto;appearance:none;cursor:pointer;border:1px solid var(--bone-e);background:#fbf8f0;color:var(--ink2);font-family:var(--body);font-size:13px;padding:10px 12px;border-radius:8px;}
 
   .preview{margin-top:6px;min-height:22px;}
   .pv-msg{font-size:13px;letter-spacing:.04em;color:var(--ink2);}
@@ -183,41 +190,35 @@
 <body>
 <div class="wrap">
   <div class="topbar">
-    <div class="brand">
-      <h1 class="brand-title">麻雀スコア<span class="dot">.</span></h1>
-      <p class="brand-sub">SCORE TABLE ・ ウマ込み入力 ・ ペア折半対応</p>
-      <div class="winds" aria-hidden="true">
-        <div class="wind n1">東</div><div class="wind">南</div><div class="wind">西</div><div class="wind">北</div>
-      </div>
+    <h1 class="brand-title">雀荘りはら</h1>
+    <div class="winds" aria-hidden="true">
+      <div class="wind n1">東</div><div class="wind">南</div><div class="wind">西</div><div class="wind">北</div>
     </div>
-    <div class="sync">
-      <span class="sync-state"><span class="sync-dot" id="syncDot"></span><span id="syncText">同期</span></span>
-      <button class="ibtn" id="syncBtn">再同期</button>
-    </div>
+    <button class="ibtn-ico" id="syncBtn" title="更新" aria-label="更新">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+    </button>
+  </div>
+
+  <div class="sessionbar">
+    <select id="sessionSel" class="sess-sel" aria-label="卓を選択"></select>
+    <button id="newSessionBtn" class="sess-new" type="button">＋ 新しい卓</button>
   </div>
 
   <section class="sec">
-    <div class="sec-head"><h2 class="sec-title">半荘を記録</h2><span class="sec-note">ウマ込みで入力</span></div>
     <div class="card" id="entryCard">
       <p class="edit-flag" id="editFlag">編集中の半荘</p>
       <div id="entrySeats"></div>
-      <p class="seat-hint">各卓に1〜2人を配置（2人はペア・折半）｡ウマ込みのスコアを入力し1卓を空欄に｡マイナスは ± ボタンで切替（-35 と直接入力も可）｡空欄の卓を自動算出｡</p>
+      <div class="addmember" id="addMemberBox" hidden>
+        <input class="am-input" id="amInput" type="text" maxlength="20" placeholder="メンバー名" autocomplete="off">
+        <button class="am-add" id="amAdd" type="button">追加</button>
+        <button class="am-cancel" id="amCancel" type="button">やめる</button>
+      </div>
       <div class="preview" id="entryPreview"></div>
       <div class="row-btns">
-        <button class="btn" id="saveBtn" disabled>記録する</button>
+        <button class="btn" id="saveBtn" disabled>記録</button>
         <button class="btn-ghost" id="cancelBtn">やめる</button>
       </div>
     </div>
-  </section>
-
-  <section class="sec">
-    <details class="settings" id="memberSettings">
-      <summary><span class="msum-mark"></span><span class="msum-title">メンバー</span><span class="msum-count" id="memberCount"></span></summary>
-      <div class="settings-body">
-        <div class="members" id="memberList"></div>
-        <button class="add-member" id="addMember">メンバーを追加</button>
-      </div>
-    </details>
   </section>
 
   <section class="sec">
@@ -229,8 +230,7 @@
   </section>
 
   <div class="footer">
-    <p class="foot-note" id="footNote">Cloudflare Workers + KV で共有保存｡同じURL（同room）を開いた全員に同期｡</p>
-    <button class="danger" id="resetBtn">履歴を全削除</button>
+    <button class="danger" id="resetBtn">この卓を消去</button>
   </div>
 </div>
 <div class="toast" id="toast"></div>
@@ -253,7 +253,7 @@
   var hasWorker = /^https?:\/\//.test(WORKER_URL) && !/YOUR-WORKER/.test(WORKER_URL);
   var LSKEY = "mahjong:cache:"+ROOM;
 
-  var state=null, lastRev=-1, editingGameId=null, toastTimer=null;
+  var root=null, state=null, lastRev=-1, editingGameId=null, toastTimer=null, seatRestore=null, pendingAdd=null;
 
   function uid(p){return p+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
   function round1(n){return Math.round(n*10)/10;}
@@ -267,16 +267,34 @@
   }
   function scoreClass(n){var r=round1(n);return r>0?"pos":(r<0?"neg":"zero");}
   function fmtDate(ts){var d=new Date(ts);var h=String(d.getHours()).padStart(2,"0");var m=String(d.getMinutes()).padStart(2,"0");return (d.getMonth()+1)+"/"+d.getDate()+" "+h+":"+m;}
+  function fmtDay(ts){var d=new Date(ts);var w=["日","月","火","水","木","金","土"][d.getDay()];return (d.getMonth()+1)+"/"+d.getDate()+"("+w+")";}
   function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
   function nameOf(pid){for(var i=0;i<state.players.length;i++){if(state.players[i].id===pid)return state.players[i].name;}return "?";}
-  function defaultState(){return {players:[
-    {id:uid("p_"),name:"プレイヤー1"},{id:uid("p_"),name:"プレイヤー2"},
-    {id:uid("p_"),name:"プレイヤー3"},{id:uid("p_"),name:"プレイヤー4"}],games:[]};}
+  function defaultPlayers(){return [];}
+  function newSession(prevPlayers){
+    var players=(prevPlayers&&prevPlayers.length)?prevPlayers.map(function(p){return {id:p.id,name:p.name};}):defaultPlayers();
+    return {id:uid("s_"),label:"",ts:Date.now(),players:players,games:[]};
+  }
   function valid(st){return st&&Array.isArray(st.players)&&Array.isArray(st.games);}
   function validGame(g){return g&&Array.isArray(g.seats)&&g.seats.length===4&&g.seats.every(function(s){return s&&Array.isArray(s.players)&&typeof s.score==="number";});}
+  function normalize(raw){
+    if(raw&&Array.isArray(raw.sessions)){
+      var ss=raw.sessions.filter(valid).map(function(s){return {id:s.id||uid("s_"),label:s.label||"",ts:s.ts||Date.now(),players:s.players,games:s.games};});
+      if(!ss.length)ss=[newSession(null)];
+      var cur=raw.currentId; if(!ss.some(function(s){return s.id===cur;}))cur=ss[ss.length-1].id;
+      return {sessions:ss,currentId:cur};
+    }
+    if(valid(raw)){var s0={id:uid("s_"),label:"",ts:Date.now(),players:raw.players,games:raw.games};return {sessions:[s0],currentId:s0.id};}
+    var s1=newSession(null); return {sessions:[s1],currentId:s1.id};
+  }
+  function usable(raw){return raw&&(Array.isArray(raw.sessions)||valid(raw));}
+  function currentSession(rt){
+    if(!rt||!Array.isArray(rt.sessions)||!rt.sessions.length)return null;
+    return rt.sessions.filter(function(x){return x.id===rt.currentId;})[0]||rt.sessions[rt.sessions.length-1];
+  }
 
   function toast(msg){var t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");if(toastTimer)clearTimeout(toastTimer);toastTimer=setTimeout(function(){t.classList.remove("show");},2200);}
-  function setSync(kind,text){var d=document.getElementById("syncDot");d.className="sync-dot"+(kind==="warn"?" warn":kind==="off"?" off":"");document.getElementById("syncText").textContent=text;}
+  function setSync(kind,text){var b=document.getElementById("syncBtn");if(!b)return;b.classList.toggle("warn",kind==="warn");b.title=text||"更新";}
 
   // ---- scoring core ----
   // scores: number[4] (ウマ込み); players: pid[][4]  -> per-seat results
@@ -315,30 +333,30 @@
     return fetch(apiBase(),{method:"PUT",headers:h,body:JSON.stringify(obj)})
       .then(function(r){if(!r.ok)throw new Error("put "+r.status);return r.json();});
   }
-  function cacheGet(){try{var v=localStorage.getItem(LSKEY);if(v){var p=JSON.parse(v);if(valid(p))return p;}}catch(e){}return null;}
-  function cacheSet(){try{localStorage.setItem(LSKEY,JSON.stringify(state));}catch(e){}}
+  function cacheGet(){try{var v=localStorage.getItem(LSKEY);if(v){var p=JSON.parse(v);if(usable(p))return normalize(p);}}catch(e){}return null;}
+  function cacheSet(){try{localStorage.setItem(LSKEY,JSON.stringify(root));}catch(e){}}
   function clone(o){return JSON.parse(JSON.stringify(o));}
   function nowt(){return fmtDate(Date.now());}
 
+  function adopt(rt){ root=normalize(rt); state=currentSession(root); cacheSet(); renderAll(); }
+
   function loadInitial(){
     if(!hasWorker){
-      state=cacheGet()||defaultState();
-      setSync("off","未設定");
-      document.getElementById("footNote").textContent="共有保存が未設定（WORKER_URL未入力）｡この端末内のみ保持｡設定後に全員で共有｡";
+      adopt(cacheGet()||normalize(null));
+      setSync("off","ローカルのみ（WORKER_URL未設定）");
       return Promise.resolve();
     }
     return apiGet().then(function(r){
-      if(r.data&&valid(r.data)){state=r.data;lastRev=r.rev;}
-      else {state=cacheGet()||defaultState();lastRev=r.rev;}
-      cacheSet(); setSync("ok","同期 "+nowt());
-      document.getElementById("footNote").textContent="Cloudflareで共有保存中｡room: "+ROOM+"｡同じURLを開いた全員に同期｡";
+      if(r.data&&usable(r.data)){root=normalize(r.data);lastRev=r.rev;}
+      else {root=cacheGet()||normalize(null);lastRev=r.rev;}
+      state=currentSession(root); cacheSet(); renderAll(); setSync("ok","同期 "+nowt());
     }).catch(function(){
-      state=cacheGet()||defaultState();
+      root=cacheGet()||normalize(null); state=currentSession(root); renderAll();
       setSync("warn","オフライン");
-      document.getElementById("footNote").textContent="Workerへ接続不可｡端末内データで表示中｡接続復帰後に同期｡";
     });
   }
   function draftHasInput(){
+    var box=document.getElementById("addMemberBox"); if(box&&!box.hidden)return true;
     var a=document.querySelectorAll("#entrySeats .seat-raw"); for(var i=0;i<a.length;i++){var v=a[i].value.trim();if(v!==""&&v!=="-")return true;}
     var sel=document.querySelectorAll("#entrySeats select.seat-p"); for(var k=0;k<sel.length;k++){if(sel[k].value)return true;}
     return false;
@@ -347,21 +365,20 @@
     if(!hasWorker)return;
     if(editingGameId!==null||draftHasInput())return;
     apiGet().then(function(r){
-      if(!r.data||!valid(r.data))return;
+      if(!r.data||!usable(r.data))return;
       if(r.rev<=lastRev)return;
-      state=r.data; lastRev=r.rev; cacheSet(); renderAll(); setSync("ok","同期 "+nowt());
+      root=normalize(r.data); lastRev=r.rev; state=currentSession(root); cacheSet(); renderAll(); setSync("ok","同期 "+nowt());
     }).catch(function(){setSync("warn","オフライン");});
   }
   // 変更は最新取得→適用→送信の順｡他者の記録を上書きしない
-  function commit(mutator){
-    if(!hasWorker){ state=mutator(clone(state))||state; cacheSet(); renderAll(); return Promise.resolve(); }
+  function commitRoot(mutator){
+    if(!hasWorker){ adopt(mutator(clone(root))||root); return Promise.resolve(); }
     setSync("ok","保存中");
     return apiGet().then(function(r){
-      var base=(r.data&&valid(r.data))?r.data:state;
+      var base=(r.data&&usable(r.data))?normalize(r.data):clone(root);
       if(r.rev>lastRev)lastRev=r.rev;
-      var next=mutator(clone(base))||base;
-      state=next; cacheSet(); renderAll();
-      return apiPut(next);
+      var next=mutator(base)||base; adopt(next);
+      return apiPut(root);
     }).then(function(resp){
       if(resp&&resp.rev)lastRev=resp.rev;
       setSync("ok","同期 "+nowt());
@@ -369,6 +386,8 @@
       setSync("warn","保存失敗"); toast("保存に失敗｡通信を確認し再操作");
     });
   }
+  // セッション内の変更用ラッパ（現在の卓に適用）
+  function commit(fn){ return commitRoot(function(rt){ var s=currentSession(rt); if(s)fn(s); return rt; }); }
 
   // ---- render: standings ----
   function renderStandings(){
@@ -390,42 +409,46 @@
     document.getElementById("histNote").textContent="全 "+state.games.length+" 半荘";
   }
 
-  // ---- render: members ----
-  function renderMembers(){
-    var s=computeStats();
-    document.getElementById("memberList").innerHTML=state.players.map(function(p){
-      var played=s[p.id]?s[p.id].played:0; var canDel=state.players.length>1&&played===0;
-      return '<div class="member" data-pid="'+p.id+'">'+
-        '<input class="member-name" value="'+esc(p.name)+'" maxlength="20">'+
-        '<span class="member-meta">'+(played>0?played+"半荘":"未参加")+'</span>'+
-        '<button class="member-del" type="button" title="削除"'+(canDel?"":" disabled")+'>\u00D7</button></div>';
-    }).join("");
-    document.getElementById("memberCount").textContent=state.players.length+"人";
-    document.getElementById("addMember").disabled=state.players.length>=16;
-  }
-
   // ---- render: entry seats ----
   function optionHTML(selectedVal,isPair){
     var html=isPair?('<option value=""'+(selectedVal?'':' selected')+'>ペアなし</option>')
                     :('<option value="" disabled hidden'+(selectedVal?'':' selected')+'>選択</option>');
     state.players.forEach(function(p){html+='<option value="'+p.id+'"'+(p.id===selectedVal?' selected':'')+'>'+esc(p.name)+'</option>';});
+    if(state.players.length<16) html+='<option value="__add__">＋ メンバー追加</option>';
     return html;
   }
   function renderEntrySeats(){
     document.getElementById("entrySeats").innerHTML=[0,1,2,3].map(function(i){
       return '<div class="seat" data-idx="'+i+'">'+
-        '<div class="seat-pl"><select class="seat-p p1">'+optionHTML("",false)+'</select>'+
-          '<select class="seat-p p2">'+optionHTML("",true)+'</select></div>'+
-        '<div class="seat-score"><button class="seat-sign" type="button" tabindex="-1">+</button>'+
-          '<input class="seat-raw" type="text" inputmode="decimal" autocomplete="off" placeholder="スコア">'+
-          '<span class="seat-auto"></span></div></div>';
+        '<select class="seat-p p1">'+optionHTML("",false)+'</select>'+
+        '<select class="seat-p p2">'+optionHTML("",true)+'</select>'+
+        '<button class="seat-sign" type="button" tabindex="-1">+</button>'+
+        '<input class="seat-raw" type="text" inputmode="decimal" autocomplete="off" maxlength="4" placeholder="点">'+
+        '<span class="seat-auto"></span></div>';
     }).join("");
+    if(seatRestore){
+      var snap=seatRestore.snap, add=seatRestore.add;
+      var els=document.querySelectorAll("#entrySeats .seat");
+      els.forEach(function(b,idx){
+        var s=snap[idx]; if(!s)return;
+        b.querySelector(".p1").value=(s.p1==="__add__"?"":s.p1);
+        b.querySelector(".p2").value=(s.p2==="__add__"?"":s.p2);
+        b.querySelector(".seat-raw").value=s.raw;
+      });
+      if(add&&els[add.idx])els[add.idx].querySelector(add.which).value=add.pid;
+      seatRestore=null;
+    }
     updatePreview();
+  }
+  function snapshotSeats(){
+    return [].slice.call(document.querySelectorAll("#entrySeats .seat")).map(function(b){
+      return {p1:b.querySelector(".p1").value,p2:b.querySelector(".p2").value,raw:b.querySelector(".seat-raw").value};
+    });
   }
   function readSeats(){
     return [].slice.call(document.querySelectorAll("#entrySeats .seat")).map(function(b){
       var p1=b.querySelector(".p1").value, p2=b.querySelector(".p2").value, players=[];
-      if(p1)players.push(p1); if(p2)players.push(p2);
+      if(p1&&p1!=="__add__")players.push(p1); if(p2&&p2!=="__add__")players.push(p2);
       return {el:b,players:players,raw:b.querySelector(".seat-raw").value.trim()};
     });
   }
@@ -444,7 +467,7 @@
     var bad=entered.some(function(s){return !isNum(s.raw);});
 
     var ok=false,res=null,msg="";
-    if(!allFilled)msg="各卓に最低1人を配置｡";
+    if(!allFilled)msg="";
     else if(dup)msg="同一プレイヤーが重複｡";
     else if(bad)msg="数値が不正な入力あり｡";
     else if(blanks.length===0)msg="1卓を空欄にする｡その卓を自動算出｡";
@@ -499,7 +522,15 @@
     }).join("");
   }
 
-  function renderAll(){renderStandings();renderMembers();renderEntrySeats();renderHistory();}
+  function renderSession(){
+    var sel=document.getElementById("sessionSel"); if(!sel||!root)return;
+    var opts=root.sessions.slice().sort(function(a,b){return b.ts-a.ts;});
+    sel.innerHTML=opts.map(function(s){
+      var label=s.label||fmtDay(s.ts);
+      return '<option value="'+s.id+'"'+(s.id===root.currentId?" selected":"")+'>'+esc(label)+'（'+s.games.length+'半荘）</option>';
+    }).join("");
+  }
+  function renderAll(){renderSession();renderStandings();renderEntrySeats();renderHistory();}
 
   // ---- entry actions ----
   function saveGame(){
@@ -526,7 +557,7 @@
     var g=state.games.filter(function(x){return x.id===gid;})[0]; if(!validGame(g))return;
     editingGameId=gid;
     document.getElementById("entryCard").classList.add("editing");
-    document.getElementById("saveBtn").textContent="更新する";
+    document.getElementById("saveBtn").textContent="更新";
     renderEntrySeats();
     g.seats.forEach(function(seat,i){
       var b=document.querySelector('#entrySeats .seat[data-idx="'+i+'"]'); if(!b)return;
@@ -537,13 +568,54 @@
     updatePreview();
     document.getElementById("entryCard").scrollIntoView({behavior:"smooth",block:"start"});
   }
-  function exitEdit(){editingGameId=null;document.getElementById("entryCard").classList.remove("editing");document.getElementById("saveBtn").textContent="記録する";}
+  function exitEdit(){editingGameId=null;document.getElementById("entryCard").classList.remove("editing");document.getElementById("saveBtn").textContent="記録";}
+
+  function openAddMember(){var box=document.getElementById("addMemberBox"),inp=document.getElementById("amInput");inp.value="";box.hidden=false;inp.focus();}
+  function closeAddMember(){document.getElementById("addMemberBox").hidden=true;document.getElementById("amInput").value="";pendingAdd=null;}
+  function confirmAddMember(){
+    var inp=document.getElementById("amInput"); var name=(inp.value||"").trim();
+    if(!name){inp.focus();return;}
+    if(state.players.length>=16){toast("メンバーは最大16人");closeAddMember();return;}
+    var nid=uid("p_");
+    if(pendingAdd) seatRestore={snap:snapshotSeats(),add:{idx:pendingAdd.idx,which:pendingAdd.which,pid:nid}};
+    document.getElementById("addMemberBox").hidden=true; inp.value=""; pendingAdd=null;
+    commit(function(st){if(st.players.length<16)st.players.push({id:nid,name:name});});
+  }
 
   // ---- events ----
   function bind(){
+    var ssel=document.getElementById("sessionSel");
+    ssel.addEventListener("change",function(){
+      var id=this.value;
+      if(editingGameId)exitEdit();
+      commitRoot(function(rt){ if(rt.sessions.some(function(s){return s.id===id;}))rt.currentId=id; return rt; });
+    });
+    document.getElementById("newSessionBtn").addEventListener("click",function(){
+      var keep=confirm("新しい卓を開始｡\n\nメンバーを引き継ぐ → OK\n空（既定の4人）から → キャンセル");
+      if(editingGameId)exitEdit();
+      commitRoot(function(rt){
+        var cur=rt.sessions.filter(function(s){return s.id===rt.currentId;})[0];
+        var ns=newSession(keep&&cur?cur.players:null);
+        rt.sessions.push(ns); rt.currentId=ns.id; return rt;
+      });
+      toast("新しい卓を開始");
+    });
+
     var seatsEl=document.getElementById("entrySeats");
     seatsEl.addEventListener("input",function(e){if(e.target.classList.contains("seat-raw"))updatePreview();});
-    seatsEl.addEventListener("change",function(e){if(e.target.classList.contains("seat-p"))updatePreview();});
+    seatsEl.addEventListener("focusin",function(e){if(e.target.classList.contains("seat-p"))e.target.dataset.prev=e.target.value;});
+    seatsEl.addEventListener("change",function(e){
+      var t=e.target; if(!t.classList.contains("seat-p"))return;
+      if(t.value==="__add__"){
+        var prev=t.dataset.prev||"";
+        t.value=prev;                         // 追加項目には留めない
+        if(state.players.length>=16){toast("メンバーは最大16人");return;}
+        pendingAdd={idx:+t.closest(".seat").dataset.idx, which:t.classList.contains("p1")?".p1":".p2"};
+        openAddMember();
+        return;
+      }
+      updatePreview();
+    });
     seatsEl.addEventListener("click",function(e){
       var b=e.target.closest(".seat-sign"); if(!b)return;
       var inp=b.parentElement.querySelector(".seat-raw"); var v=inp.value.trim();
@@ -553,31 +625,15 @@
     document.getElementById("saveBtn").addEventListener("click",saveGame);
     document.getElementById("cancelBtn").addEventListener("click",function(){exitEdit();renderEntrySeats();});
 
-    var ml=document.getElementById("memberList");
-    ml.addEventListener("change",function(e){
-      if(!e.target.classList.contains("member-name"))return;
-      var pid=e.target.closest(".member").dataset.pid, v=e.target.value.trim()||"無名";
-      commit(function(st){var p=st.players.filter(function(x){return x.id===pid;})[0]; if(p)p.name=v; return st;});
-    });
-    ml.addEventListener("click",function(e){
-      var b=e.target.closest(".member-del"); if(!b||b.disabled)return;
-      var pid=b.closest(".member").dataset.pid, p=state.players.filter(function(x){return x.id===pid;})[0]; if(!p)return;
-      if(!confirm(p.name+" を削除する｡"))return;
-      commit(function(st){
-        var used=st.games.some(function(g){return validGame(g)&&g.seats.some(function(se){return se.players.indexOf(pid)>=0;});});
-        if(used)return st;
-        st.players=st.players.filter(function(x){return x.id!==pid;}); return st;
-      });
-    });
-    document.getElementById("addMember").addEventListener("click",function(){
-      if(state.players.length>=16)return;
-      commit(function(st){ if(st.players.length<16)st.players.push({id:uid("p_"),name:"プレイヤー"+(st.players.length+1)}); return st; });
-    });
+    document.getElementById("amAdd").addEventListener("click",confirmAddMember);
+    document.getElementById("amInput").addEventListener("keydown",function(e){if(e.key==="Enter")confirmAddMember();});
+    document.getElementById("amCancel").addEventListener("click",closeAddMember);
 
     document.getElementById("histList").addEventListener("click",function(e){
       var item=e.target.closest(".game"); if(!item)return; var gid=item.dataset.gid;
       if(e.target.classList.contains("del")){
         if(!confirm("この半荘を削除する｡"))return;
+        if(!confirm("確認｡この半荘を完全に削除する｡取り消し不可｡"))return;
         if(editingGameId===gid)exitEdit();
         commit(function(st){st.games=st.games.filter(function(x){return x.id!==gid;}); return st;});
         toast("半荘を削除");
@@ -588,23 +644,23 @@
       if(!hasWorker){toast("WORKER_URL未設定");return;}
       setSync("ok","同期中");
       apiGet().then(function(r){
-        if(r.data&&valid(r.data)){state=r.data;lastRev=r.rev;cacheSet();renderAll();}
+        if(r.data&&usable(r.data)){root=normalize(r.data);lastRev=r.rev;state=currentSession(root);cacheSet();renderAll();}
         setSync("ok","同期 "+nowt());
       }).catch(function(){setSync("warn","オフライン");toast("接続に失敗");});
     });
     document.getElementById("resetBtn").addEventListener("click",function(){
-      if(!state.games.length){toast("履歴は空");return;}
-      if(!confirm("履歴をすべて削除する｡メンバーは保持｡"))return;
+      if(!state.games.length){toast("記録は空");return;}
+      if(!confirm("現在の卓の記録をすべて削除する｡メンバーは保持｡"))return;
+      if(!confirm("確認｡現在の卓の全記録を完全に削除する｡取り消し不可｡"))return;
       exitEdit();
       commit(function(st){st.games=[]; return st;});
-      toast("履歴を全削除");
+      toast("この卓を消去");
     });
   }
 
   setSync("off","読込中");
   loadInitial().then(function(){
     renderAll(); bind();
-    if(!state.games.length)document.getElementById("memberSettings").open=true;
     if(hasWorker)setInterval(poll,9000);
   });
 })();
