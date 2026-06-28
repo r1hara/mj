@@ -136,6 +136,16 @@
   .ver-restore{flex:0 0 auto;appearance:none;cursor:pointer;border:1px solid var(--bone-e);background:#fbf8f0;color:var(--ink);font-family:var(--body);font-size:12px;padding:8px 12px;border-radius:8px;}
   .ver-restore:hover{background:#f0ead9;}
   .ver-empty{font-size:13px;color:rgba(236,227,208,.55);}
+  .modal{position:fixed;inset:0;background:rgba(8,20,16,.62);display:flex;align-items:center;justify-content:center;padding:20px;z-index:60;}
+  .modal[hidden]{display:none;}
+  .modal-box{width:100%;max-width:360px;background:linear-gradient(180deg,#f1eadb,var(--bone));border:1px solid var(--bone-e);border-radius:14px;box-shadow:0 14px 44px rgba(0,0,0,.5);padding:18px;color:var(--ink);}
+  .modal-title{font-family:var(--disp);font-weight:800;font-size:18px;letter-spacing:.06em;margin-bottom:7px;}
+  .modal-sub{font-size:12.5px;color:var(--ink2);margin-bottom:14px;line-height:1.55;}
+  .modal-opts{display:flex;flex-direction:column;gap:9px;}
+  .modal-opt{appearance:none;cursor:pointer;border:1px solid var(--bone-e);background:#fbf8f0;color:var(--ink);font-family:var(--disp);font-weight:600;font-size:15px;padding:13px 14px;border-radius:10px;display:flex;justify-content:space-between;align-items:center;gap:12px;}
+  .modal-opt:hover{background:#f0ead9;border-color:var(--gold);}
+  .modal-opt .mo-val{font-family:var(--mono);font-weight:700;font-size:17px;color:var(--red);}
+  .modal-cancel{appearance:none;cursor:pointer;border:none;background:transparent;color:var(--ink2);font-family:var(--body);font-size:12.5px;padding:6px;margin-top:2px;text-decoration:underline;align-self:center;}
 
   .preview{margin-top:6px;min-height:22px;}
   .pv-msg{font-size:13px;letter-spacing:.04em;color:var(--ink2);}
@@ -253,6 +263,13 @@
   </div>
 </div>
 <div class="toast" id="toast"></div>
+<div class="modal" id="fracModal" hidden>
+  <div class="modal-box">
+    <div class="modal-title">端数の割当</div>
+    <div class="modal-sub" id="fracSub"></div>
+    <div class="modal-opts" id="fracOpts"></div>
+  </div>
+</div>
 
 <script>
 (function(){
@@ -276,7 +293,7 @@
 
   function uid(p){return p+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
   function round1(n){return Math.round(n*10)/10;}
-  function isNum(s){return /^[-+]?(\d+(\.\d+)?|\.\d+)$/.test(s);}
+  function isNum(s){return /^[-+]?\d+$/.test(s);}
   function isBlank(s){return s===""||s==="-";}
   function fmt(n){
     if(n===null||n===undefined||isNaN(n))return"";
@@ -322,12 +339,20 @@
   function setSync(kind,text){var b=document.getElementById("syncBtn");if(!b)return;b.classList.toggle("warn",kind==="warn");b.title=text||"更新";}
 
   // ---- scoring core ----
-  // scores: number[4] (ウマ込み); players: pid[][4]  -> per-seat results
-  function computeGame(scores,players){
-    return scores.map(function(score,i){
-      var better=0; scores.forEach(function(x){if(x>score)better++;});
-      var n=Math.max(1,players[i].length);
-      return {idx:i,score:score,rank:better+1,finalSeat:score,perPlayer:score/n,players:players[i]};
+  // 各座席の素点(ウマ込み)から順位と個別配分を算出｡ペアは折半｡奇数は extra(pid)へ+1
+  function seatShares(score,players,extra){
+    var sh={};
+    if(players.length<=1){ if(players[0]!==undefined)sh[players[0]]=score; return sh; }
+    if(score%2===0){ sh[players[0]]=score/2; sh[players[1]]=score/2; }
+    else { var lo=(score-1)/2; var hi=(extra&&players.indexOf(extra)>=0)?extra:players[0];
+      players.forEach(function(p){sh[p]=(p===hi)?lo+1:lo;}); }
+    return sh;
+  }
+  function computeGame(seats){
+    var scores=seats.map(function(s){return s.score;});
+    return seats.map(function(s,i){
+      var better=0; scores.forEach(function(x){if(x>s.score)better++;});
+      return {idx:i,score:s.score,rank:better+1,finalSeat:s.score,players:s.players,shares:seatShares(s.score,s.players,s.extra)};
     });
   }
 
@@ -335,11 +360,11 @@
     var s={}; state.players.forEach(function(p){s[p.id]={total:0,played:0,tops:0};});
     state.games.forEach(function(g){
       if(!validGame(g))return;
-      var res=computeGame(g.seats.map(function(x){return x.score;}),g.seats.map(function(x){return x.players;}));
+      var res=computeGame(g.seats);
       res.forEach(function(seat){
         seat.players.forEach(function(pid){
           if(!s[pid])return;
-          s[pid].total+=seat.perPlayer; s[pid].played++; if(seat.rank===1)s[pid].tops++;
+          s[pid].total+=seat.shares[pid]; s[pid].played++; if(seat.rank===1)s[pid].tops++;
         });
       });
     });
@@ -461,7 +486,7 @@
         '<select class="seat-p p1">'+optionHTML("",false)+'</select>'+
         '<select class="seat-p p2">'+optionHTML("",true)+'</select>'+
         '<button class="seat-sign" type="button" tabindex="-1">+</button>'+
-        '<input class="seat-raw" type="text" inputmode="decimal" autocomplete="off" maxlength="4" placeholder="点">'+
+        '<input class="seat-raw" type="text" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="点">'+
         '<span class="seat-auto"></span></div>';
     }).join("");
     if(seatRestore){
@@ -511,25 +536,26 @@
     else if(blanks.length===0)msg="1卓を空欄にする｡その卓を自動算出｡";
     else if(blanks.length>1)msg="空欄は1卓のみ｡残りのスコアを入力｡";
     else{
-      var sum=entered.reduce(function(a,s){return a+parseFloat(s.raw);},0);
-      var scores=seats.map(function(s){return isBlank(s.raw)?round1(-sum):parseFloat(s.raw);});
+      var sum=entered.reduce(function(a,s){return a+parseInt(s.raw,10);},0);
+      var scores=seats.map(function(s){return isBlank(s.raw)?-sum:parseInt(s.raw,10);});
       var bi=seats.indexOf(blanks[0]);
       blanks[0].el.classList.add("is-auto");
       blanks[0].el.querySelector(".seat-auto").textContent=fmt(scores[bi]);
-      res=computeGame(scores,seats.map(function(s){return s.players;}));
+      res=computeGame(seats.map(function(s,i){return {score:scores[i],players:s.players};}));
       ok=true;
     }
     if(ok){
       var sorted=res.slice().sort(function(a,b){return a.rank-b.rank||b.score-a.score;});
       pv.innerHTML='<div class="pv-seats">'+sorted.map(function(r){
-        var pair=r.players.length>1;
+        var pair=r.players.length>1, odd=pair&&(r.score%2!==0);
         var nm=r.players.map(nameOf).map(esc).join(" ・ ");
+        var splitTxt = pair ? (odd ? (fmt((r.score-1)/2)+" / "+fmt((r.score-1)/2+1)+"（端数は記録時に選択）") : "各 "+fmt(r.score/2)) : "";
         return '<div class="pseat'+(r.rank===1?" win":"")+'">'+
           '<span class="pp">'+r.rank+'</span>'+
           '<div class="pinfo"><div class="pnames">'+nm+'</div>'+
             (pair?'<div class="pcalc">2人で折半</div>':'')+'</div>'+
           '<div class="pright"><div class="pfin '+scoreClass(r.finalSeat)+'">'+fmt(r.finalSeat)+'</div>'+
-            (pair?'<div class="psplit">各 '+fmt(r.perPlayer)+'</div>':'')+'</div></div>';
+            (pair?'<div class="psplit">'+splitTxt+'</div>':'')+'</div></div>';
       }).join("")+'</div>';
     } else { pv.innerHTML='<div class="pv-msg">'+msg+'</div>'; }
     btn.disabled=!ok;
@@ -544,14 +570,15 @@
     list.innerHTML=games.map(function(g){
       var rows="";
       if(validGame(g)){
-        var res=computeGame(g.seats.map(function(x){return x.score;}),g.seats.map(function(x){return x.players;}));
+        var res=computeGame(g.seats);
         rows=res.slice().sort(function(a,b){return a.rank-b.rank||b.score-a.score;}).map(function(r){
           var pair=r.players.length>1; var nm=r.players.map(nameOf).map(esc).join(" ・ ");
+          var splitTxt=pair?r.players.map(function(pid){return fmt(r.shares[pid]);}).join(" ・ "):"";
           return '<div class="grow'+(r.rank===1?" win":"")+'">'+
             '<span class="grank">'+r.rank+'</span>'+
             '<div><div class="gnames">'+nm+'</div>'+(pair?'<div class="gsub">2人で折半</div>':'')+'</div>'+
             '<div class="gright"><div class="gfin '+scoreClass(r.finalSeat)+'">'+fmt(r.finalSeat)+'</div>'+
-              (pair?'<div class="gsplit">各 '+fmt(r.perPlayer)+'</div>':'')+'</div></div>';
+              (pair?'<div class="gsplit">'+splitTxt+'</div>':'')+'</div></div>';
         }).join("");
       } else { rows='<div class="gsub">データ形式が不正</div>'; }
       return '<div class="game" data-gid="'+g.id+'"><div class="game-head"><span class="game-date">'+fmtDate(g.ts)+'</span>'+
@@ -586,22 +613,50 @@
   function saveGame(){
     var res=updatePreview(); if(!res)return;
     var seats=readSeats();
-    var sum=seats.filter(function(s){return !isBlank(s.raw);}).reduce(function(a,s){return a+parseFloat(s.raw);},0);
+    var sum=seats.filter(function(s){return !isBlank(s.raw);}).reduce(function(a,s){return a+parseInt(s.raw,10);},0);
     var bi=seats.findIndex(function(s){return isBlank(s.raw);});
-    var seatsData=seats.map(function(s){return {players:s.players.slice(),score:isBlank(s.raw)?round1(-sum):parseFloat(s.raw)};});
+    var seatsData=seats.map(function(s){return {players:s.players.slice(),score:isBlank(s.raw)?-sum:parseInt(s.raw,10)};});
     var editId=editingGameId, newId=uid("g_"), ts=Date.now();
-    exitEdit();
-    commit(function(st){
-      if(editId){
-        var g=st.games.filter(function(x){return x.id===editId;})[0];
-        if(g){g.seats=seatsData;g.computedSeat=bi;}
-        else st.games.push({id:newId,ts:ts,seats:seatsData,computedSeat:bi});
-      } else {
-        st.games.push({id:newId,ts:ts,seats:seatsData,computedSeat:bi});
-      }
-      return st;
-    }, editId?"編集":"記録");
-    toast(editId?"半荘を更新":"半荘を記録");
+    var queue=[];
+    seatsData.forEach(function(sd,idx){
+      if(sd.players.length===2 && sd.score%2!==0){ queue.push({idx:idx,players:sd.players.slice(),score:sd.score,lo:(sd.score-1)/2}); }
+    });
+    function finish(){
+      exitEdit();
+      commit(function(st){
+        if(editId){
+          var g=st.games.filter(function(x){return x.id===editId;})[0];
+          if(g){g.seats=seatsData;g.computedSeat=bi;}
+          else st.games.push({id:newId,ts:ts,seats:seatsData,computedSeat:bi});
+        } else {
+          st.games.push({id:newId,ts:ts,seats:seatsData,computedSeat:bi});
+        }
+        return st;
+      }, editId?"編集":"記録");
+      toast(editId?"半荘を更新":"半荘を記録");
+    }
+    if(!queue.length){ finish(); return; }
+    resolveFractions(queue,seatsData,finish);
+  }
+  function resolveFractions(queue,seatsData,done){
+    var modal=document.getElementById("fracModal"), i=0;
+    function step(){
+      if(i>=queue.length){ modal.hidden=true; done(); return; }
+      var q=queue[i];
+      document.getElementById("fracSub").textContent="卓スコア "+fmt(q.score)+"｡2で割り切れないため、多い方（"+fmt(q.lo+1)+"）を受け取る人を選択｡もう一方は "+fmt(q.lo)+"｡";
+      var opts=document.getElementById("fracOpts"); opts.innerHTML="";
+      q.players.forEach(function(pid){
+        var btn=document.createElement("button"); btn.className="modal-opt"; btn.type="button";
+        btn.innerHTML='<span>'+esc(nameOf(pid))+'</span><span class="mo-val">'+fmt(q.lo+1)+'</span>';
+        btn.onclick=function(){ seatsData[q.idx].extra=pid; i++; step(); };
+        opts.appendChild(btn);
+      });
+      var cancel=document.createElement("button"); cancel.className="modal-cancel"; cancel.type="button"; cancel.textContent="やめる";
+      cancel.onclick=function(){ modal.hidden=true; };
+      opts.appendChild(cancel);
+      modal.hidden=false;
+    }
+    step();
   }
   function enterEdit(gid){
     var g=state.games.filter(function(x){return x.id===gid;})[0]; if(!validGame(g))return;
