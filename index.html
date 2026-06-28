@@ -127,6 +127,15 @@
   .am-input{flex:1 1 auto;min-width:0;font-family:var(--body);font-size:15px;padding:10px 11px;border-radius:8px;border:1px solid var(--bone-e);background:#fff;color:var(--ink);box-shadow:inset 0 1px 2px rgba(30,37,27,.1);}
   .am-add{flex:0 0 auto;appearance:none;cursor:pointer;border:none;font-family:var(--disp);font-weight:600;font-size:14px;letter-spacing:.06em;color:#fff;background:linear-gradient(180deg,#d0473a,var(--red));box-shadow:0 2px 0 var(--red-d);padding:10px 16px;border-radius:8px;}
   .am-cancel{flex:0 0 auto;appearance:none;cursor:pointer;border:1px solid var(--bone-e);background:#fbf8f0;color:var(--ink2);font-family:var(--body);font-size:13px;padding:10px 12px;border-radius:8px;}
+  .ver-note{font-size:11.5px;color:rgba(236,227,208,.6);margin:0 0 12px;letter-spacing:.04em;line-height:1.5;}
+  .ver-list{display:flex;flex-direction:column;gap:7px;}
+  .ver-row{display:flex;align-items:center;gap:10px;background:rgba(236,227,208,.06);border:1px solid var(--felt-line);border-radius:9px;padding:9px 10px;}
+  .ver-info{flex:1 1 auto;min-width:0;}
+  .ver-when{font-family:var(--mono);font-size:12.5px;color:var(--bone);font-variant-numeric:tabular-nums;}
+  .ver-label{font-size:11px;color:rgba(236,227,208,.6);margin-top:1px;}
+  .ver-restore{flex:0 0 auto;appearance:none;cursor:pointer;border:1px solid var(--bone-e);background:#fbf8f0;color:var(--ink);font-family:var(--body);font-size:12px;padding:8px 12px;border-radius:8px;}
+  .ver-restore:hover{background:#f0ead9;}
+  .ver-empty{font-size:13px;color:rgba(236,227,208,.55);}
 
   .preview{margin-top:6px;min-height:22px;}
   .pv-msg{font-size:13px;letter-spacing:.04em;color:var(--ink2);}
@@ -229,6 +238,16 @@
     <div class="hist-list" id="histList"></div>
   </section>
 
+  <section class="sec">
+    <details class="settings" id="verSettings">
+      <summary><span class="msum-mark"></span><span class="msum-title">変更履歴</span><span class="msum-count" id="verCount"></span></summary>
+      <div class="settings-body">
+        <p class="ver-note">各変更の直前を保存（最新20件）｡選択で全体をその時点へ復元｡復元自体も巻き戻し可能｡</p>
+        <div class="ver-list" id="verList"></div>
+      </div>
+    </details>
+  </section>
+
   <div class="footer">
     <button class="danger" id="resetBtn">この卓を消去</button>
   </div>
@@ -282,15 +301,21 @@
       var ss=raw.sessions.filter(valid).map(function(s){return {id:s.id||uid("s_"),label:s.label||"",ts:s.ts||Date.now(),players:s.players,games:s.games};});
       if(!ss.length)ss=[newSession(null)];
       var cur=raw.currentId; if(!ss.some(function(s){return s.id===cur;}))cur=ss[ss.length-1].id;
-      return {sessions:ss,currentId:cur};
+      return {sessions:ss,currentId:cur,history:Array.isArray(raw.history)?raw.history:[]};
     }
-    if(valid(raw)){var s0={id:uid("s_"),label:"",ts:Date.now(),players:raw.players,games:raw.games};return {sessions:[s0],currentId:s0.id};}
-    var s1=newSession(null); return {sessions:[s1],currentId:s1.id};
+    if(valid(raw)){var s0={id:uid("s_"),label:"",ts:Date.now(),players:raw.players,games:raw.games};return {sessions:[s0],currentId:s0.id,history:[]};}
+    var s1=newSession(null); return {sessions:[s1],currentId:s1.id,history:[]};
   }
   function usable(raw){return raw&&(Array.isArray(raw.sessions)||valid(raw));}
   function currentSession(rt){
     if(!rt||!Array.isArray(rt.sessions)||!rt.sessions.length)return null;
     return rt.sessions.filter(function(x){return x.id===rt.currentId;})[0]||rt.sessions[rt.sessions.length-1];
+  }
+  function pruneEmpty(rt,keepId){
+    rt.sessions=rt.sessions.filter(function(s){return (s.games&&s.games.length>0)||s.id===keepId;});
+    if(!rt.sessions.length)rt.sessions=[newSession(null)];
+    if(!rt.sessions.some(function(s){return s.id===rt.currentId;}))rt.currentId=rt.sessions[rt.sessions.length-1].id;
+    return rt;
   }
 
   function toast(msg){var t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");if(toastTimer)clearTimeout(toastTimer);toastTimer=setTimeout(function(){t.classList.remove("show");},2200);}
@@ -370,14 +395,27 @@
       root=normalize(r.data); lastRev=r.rev; state=currentSession(root); cacheSet(); renderAll(); setSync("ok","同期 "+nowt());
     }).catch(function(){setSync("warn","オフライン");});
   }
-  // 変更は最新取得→適用→送信の順｡他者の記録を上書きしない
-  function commitRoot(mutator){
-    if(!hasWorker){ adopt(mutator(clone(root))||root); return Promise.resolve(); }
+  function snapOf(rt){return {sessions:clone(rt.sessions),currentId:rt.currentId};}
+  function withVersion(base,next,label){
+    var hist=Array.isArray(base.history)?base.history.slice():[];
+    hist.push({ts:Date.now(),label:label||"変更",snap:snapOf(base)});
+    if(hist.length>20)hist=hist.slice(-20);
+    next.history=hist; return next;
+  }
+  // 変更は最新取得→適用→送信の順｡他者の記録を上書きしない｡変更前を版として記録
+  function commitRoot(mutator,label){
+    if(!hasWorker){
+      var lbase=clone(root);
+      var lnext=mutator(clone(root))||clone(root);
+      adopt(withVersion(lbase,lnext,label)); return Promise.resolve();
+    }
     setSync("ok","保存中");
     return apiGet().then(function(r){
       var base=(r.data&&usable(r.data))?normalize(r.data):clone(root);
       if(r.rev>lastRev)lastRev=r.rev;
-      var next=mutator(base)||base; adopt(next);
+      var before=clone(base);
+      var next=mutator(base)||base;
+      adopt(withVersion(before,next,label));
       return apiPut(root);
     }).then(function(resp){
       if(resp&&resp.rev)lastRev=resp.rev;
@@ -387,7 +425,7 @@
     });
   }
   // セッション内の変更用ラッパ（現在の卓に適用）
-  function commit(fn){ return commitRoot(function(rt){ var s=currentSession(rt); if(s)fn(s); return rt; }); }
+  function commit(fn,label){ return commitRoot(function(rt){ var s=currentSession(rt); if(s)fn(s); return rt; }, label); }
 
   // ---- render: standings ----
   function renderStandings(){
@@ -524,13 +562,25 @@
 
   function renderSession(){
     var sel=document.getElementById("sessionSel"); if(!sel||!root)return;
-    var opts=root.sessions.slice().sort(function(a,b){return b.ts-a.ts;});
+    var opts=root.sessions.filter(function(s){return s.games.length>0||s.id===root.currentId;}).sort(function(a,b){return b.ts-a.ts;});
     sel.innerHTML=opts.map(function(s){
       var label=s.label||fmtDay(s.ts);
       return '<option value="'+s.id+'"'+(s.id===root.currentId?" selected":"")+'>'+esc(label)+'（'+s.games.length+'半荘）</option>';
     }).join("");
   }
-  function renderAll(){renderSession();renderStandings();renderEntrySeats();renderHistory();}
+  function renderVersions(){
+    var box=document.getElementById("verList"); if(!box||!root)return;
+    var h=Array.isArray(root.history)?root.history:[];
+    if(!h.length){box.innerHTML='<div class="ver-empty">まだ変更はない｡</div>';document.getElementById("verCount").textContent="";return;}
+    box.innerHTML=h.slice().reverse().map(function(v,i){
+      var idx=h.length-1-i;
+      return '<div class="ver-row" data-idx="'+idx+'">'+
+        '<div class="ver-info"><div class="ver-when">'+fmtDate(v.ts)+'</div><div class="ver-label">「'+esc(v.label||"変更")+'」の直前</div></div>'+
+        '<button class="ver-restore" type="button">この時点へ復元</button></div>';
+    }).join("");
+    document.getElementById("verCount").textContent=h.length+"件";
+  }
+  function renderAll(){renderSession();renderStandings();renderEntrySeats();renderHistory();renderVersions();}
 
   // ---- entry actions ----
   function saveGame(){
@@ -550,7 +600,7 @@
         st.games.push({id:newId,ts:ts,seats:seatsData,computedSeat:bi});
       }
       return st;
-    });
+    }, editId?"編集":"記録");
     toast(editId?"半荘を更新":"半荘を記録");
   }
   function enterEdit(gid){
@@ -579,7 +629,7 @@
     var nid=uid("p_");
     if(pendingAdd) seatRestore={snap:snapshotSeats(),add:{idx:pendingAdd.idx,which:pendingAdd.which,pid:nid}};
     document.getElementById("addMemberBox").hidden=true; inp.value=""; pendingAdd=null;
-    commit(function(st){if(st.players.length<16)st.players.push({id:nid,name:name});});
+    commit(function(st){if(st.players.length<16)st.players.push({id:nid,name:name});}, "メンバー追加");
   }
 
   // ---- events ----
@@ -588,16 +638,17 @@
     ssel.addEventListener("change",function(){
       var id=this.value;
       if(editingGameId)exitEdit();
-      commitRoot(function(rt){ if(rt.sessions.some(function(s){return s.id===id;}))rt.currentId=id; return rt; });
+      commitRoot(function(rt){ if(rt.sessions.some(function(s){return s.id===id;}))rt.currentId=id; return pruneEmpty(rt,rt.currentId); }, "卓切替");
     });
     document.getElementById("newSessionBtn").addEventListener("click",function(){
-      var keep=confirm("新しい卓を開始｡\n\nメンバーを引き継ぐ → OK\n空（既定の4人）から → キャンセル");
+      var keep=confirm("新しい卓を開始｡\n\nメンバーを引き継ぐ → OK\n空（メンバーなし）から → キャンセル");
       if(editingGameId)exitEdit();
       commitRoot(function(rt){
         var cur=rt.sessions.filter(function(s){return s.id===rt.currentId;})[0];
         var ns=newSession(keep&&cur?cur.players:null);
-        rt.sessions.push(ns); rt.currentId=ns.id; return rt;
-      });
+        rt.sessions.push(ns); rt.currentId=ns.id;
+        return pruneEmpty(rt,ns.id);
+      }, "新しい卓");
       toast("新しい卓を開始");
     });
 
@@ -633,9 +684,9 @@
       var item=e.target.closest(".game"); if(!item)return; var gid=item.dataset.gid;
       if(e.target.classList.contains("del")){
         if(!confirm("この半荘を削除する｡"))return;
-        if(!confirm("確認｡この半荘を完全に削除する｡取り消し不可｡"))return;
+        if(!confirm("確認｡この半荘を削除する｡変更履歴から復元可能｡"))return;
         if(editingGameId===gid)exitEdit();
-        commit(function(st){st.games=st.games.filter(function(x){return x.id!==gid;}); return st;});
+        commit(function(st){st.games=st.games.filter(function(x){return x.id!==gid;}); return st;}, "半荘削除");
         toast("半荘を削除");
       } else if(e.target.classList.contains("edit")){ enterEdit(gid); }
     });
@@ -651,10 +702,20 @@
     document.getElementById("resetBtn").addEventListener("click",function(){
       if(!state.games.length){toast("記録は空");return;}
       if(!confirm("現在の卓の記録をすべて削除する｡メンバーは保持｡"))return;
-      if(!confirm("確認｡現在の卓の全記録を完全に削除する｡取り消し不可｡"))return;
+      if(!confirm("確認｡現在の卓の全記録を削除する｡変更履歴から復元可能｡"))return;
       exitEdit();
-      commit(function(st){st.games=[]; return st;});
+      commit(function(st){st.games=[]; return st;}, "卓消去");
       toast("この卓を消去");
+    });
+    document.getElementById("verList").addEventListener("click",function(e){
+      var b=e.target.closest(".ver-restore"); if(!b)return;
+      var idx=+b.closest(".ver-row").dataset.idx;
+      var h=(root&&root.history)||[]; var v=h[idx]; if(!v||!v.snap)return;
+      if(!confirm("この時点（"+fmtDate(v.ts)+"「"+(v.label||"変更")+"」の直前）へ復元する｡現在の内容は上書きされる｡"))return;
+      if(!confirm("確認｡全体をこの時点へ巻き戻す｡この復元も変更履歴から取り消し可能｡"))return;
+      var snap=v.snap; if(editingGameId)exitEdit();
+      commitRoot(function(rt){ rt.sessions=clone(snap.sessions); rt.currentId=snap.currentId; return rt; }, "復元");
+      toast("復元しました");
     });
   }
 
