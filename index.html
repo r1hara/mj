@@ -404,7 +404,13 @@
   function clone(o){return JSON.parse(JSON.stringify(o));}
   function nowt(){return fmtDate(Date.now());}
 
-  function adopt(rt){ root=normalize(rt); state=currentSession(root); cacheSet(); renderAll(); }
+  function keepSeatSelections(){
+    if(!document.querySelector("#entrySeats .seat"))return;
+    var any=false;
+    var keep=snapshotSeats().map(function(s){ if(s.p1||s.p2)any=true; return {p1:s.p1,p2:s.p2,raw:""}; });
+    if(any)seatRestore={snap:keep};
+  }
+  function adopt(rt){ if(!seatRestore&&editingGameId===null)keepSeatSelections(); root=normalize(rt); state=currentSession(root); cacheSet(); renderAll(); }
 
   function loadInitial(){
     if(!hasWorker){
@@ -424,7 +430,6 @@
   function draftHasInput(){
     var box=document.getElementById("addMemberBox"); if(box&&!box.hidden)return true;
     var a=document.querySelectorAll("#entrySeats .seat-raw"); for(var i=0;i<a.length;i++){var v=a[i].value.trim();if(v!==""&&v!=="-")return true;}
-    var sel=document.querySelectorAll("#entrySeats select.seat-p"); for(var k=0;k<sel.length;k++){if(sel[k].value)return true;}
     return false;
   }
   function poll(){
@@ -433,7 +438,7 @@
     apiGet().then(function(r){
       if(!r.data||!usable(r.data))return;
       if(r.rev<=lastRev)return;
-      root=normalize(r.data); lastRev=r.rev; state=currentSession(root); cacheSet(); renderAll(); setSync("ok","同期 "+nowt());
+      lastRev=r.rev; adopt(r.data); setSync("ok","同期 "+nowt());
     }).catch(function(){setSync("warn","オフライン");});
   }
   function snapOf(rt){return {sessions:clone(rt.sessions),currentId:rt.currentId};}
@@ -650,7 +655,9 @@
       if(sd.players.length===2 && sd.score%2!==0){ queue.push({idx:idx,players:sd.players.slice(),score:sd.score,lo:(sd.score-1)/2}); }
     });
     function finish(){
+      var keep=snapshotSeats().map(function(s){return {p1:s.p1,p2:s.p2,raw:""};});
       exitEdit();
+      seatRestore={snap:keep};
       commit(function(st){
         if(editId){
           var g=st.games.filter(function(x){return x.id===editId;})[0];
@@ -823,7 +830,7 @@
       if(!hasWorker){toast("WORKER_URL未設定");return;}
       setSync("ok","同期中");
       apiGet().then(function(r){
-        if(r.data&&usable(r.data)){root=normalize(r.data);lastRev=r.rev;state=currentSession(root);cacheSet();renderAll();}
+        if(r.data&&usable(r.data)){lastRev=r.rev;adopt(r.data);}
         setSync("ok","同期 "+nowt());
       }).catch(function(){setSync("warn","オフライン");toast("接続に失敗");});
     });
