@@ -283,6 +283,13 @@
     <div class="modal-opts" id="hmOpts"></div>
   </div>
 </div>
+<div class="modal" id="modeModal" hidden>
+  <div class="modal-box">
+    <div class="modal-title">新しい卓</div>
+    <div class="modal-sub">形式を選択｡以後この卓では変更不可｡</div>
+    <div class="modal-opts" id="mmOpts"></div>
+  </div>
+</div>
 
 <script>
 (function(){
@@ -320,17 +327,17 @@
   function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
   function nameOf(pid){for(var i=0;i<state.players.length;i++){if(state.players[i].id===pid)return state.players[i].name;}return "?";}
   function defaultPlayers(){return [];}
-  function newSession(prevPlayers){
+  function newSession(prevPlayers,mode){
     var players=(prevPlayers&&prevPlayers.length)?prevPlayers.map(function(p){return {id:p.id,name:p.name};}):defaultPlayers();
-    return {id:uid("s_"),label:"",ts:Date.now(),players:players,games:[]};
+    return {id:uid("s_"),label:"",ts:Date.now(),players:players,games:[],mode:(mode===3?3:4)};
   }
   function valid(st){return st&&Array.isArray(st.players)&&Array.isArray(st.games);}
-  function validGame(g){return g&&Array.isArray(g.seats)&&g.seats.length===4&&g.seats.every(function(s){return s&&Array.isArray(s.players)&&typeof s.score==="number";});}
+  function validGame(g){return g&&Array.isArray(g.seats)&&(g.seats.length===4||g.seats.length===3)&&g.seats.every(function(s){return s&&Array.isArray(s.players)&&typeof s.score==="number";});}
   function isActive(g){return validGame(g)&&!g.deleted;}
   function activeCount(s){return s&&Array.isArray(s.games)?s.games.filter(isActive).length:0;}
   function normalize(raw){
     if(raw&&Array.isArray(raw.sessions)){
-      var ss=raw.sessions.filter(valid).map(function(s){return {id:s.id||uid("s_"),label:s.label||"",ts:s.ts||Date.now(),players:s.players,games:s.games};});
+      var ss=raw.sessions.filter(valid).map(function(s){return {id:s.id||uid("s_"),label:s.label||"",ts:s.ts||Date.now(),players:s.players,games:s.games,mode:(s.mode===3?3:4)};});
       if(!ss.length)ss=[newSession(null)];
       var cur=raw.currentId; if(!ss.some(function(s){return s.id===cur;}))cur=ss[ss.length-1].id;
       return {sessions:ss,currentId:cur,history:Array.isArray(raw.history)?raw.history:[]};
@@ -483,7 +490,7 @@
       var rank=i+1, rcls=rank===2?"r2":rank===3?"r3":"", bar="";
       if(r.total!==0){var w=Math.min(50,Math.abs(r.total)/maxAbs*50);
         bar=r.total>0?'<span class="bfill pos" style="left:50%;width:'+w+'%"></span>':'<span class="bfill neg" style="left:'+(50-w)+'%;width:'+w+'%"></span>';}
-      var sub=r.played>0?(r.played+"半荘 ・ "+r.ranks.join("-")):"記録なし";
+      var sub=r.played>0?(r.played+"半荘 ・ "+r.ranks.slice(0,modeCount()).join("-")):"記録なし";
       return '<div class="stand'+(rank===1&&r.played>0?" lead":"")+'">'+
         '<div class="rank '+rcls+'">'+rank+'</div>'+
         '<div class="who"><div class="name">'+esc(r.p.name)+'</div><div class="sub">'+sub+'</div></div>'+
@@ -501,8 +508,10 @@
     if(state.players.length<16) html+='<option value="__add__">＋ メンバー追加</option>';
     return html;
   }
+  function modeCount(){return (state&&state.mode===3)?3:4;}
   function renderEntrySeats(){
-    document.getElementById("entrySeats").innerHTML=[0,1,2,3].map(function(i){
+    var idxs=[]; for(var i=0;i<modeCount();i++)idxs.push(i);
+    document.getElementById("entrySeats").innerHTML=idxs.map(function(i){
       return '<div class="seat" data-idx="'+i+'">'+
         '<select class="seat-p p1">'+optionHTML("",false)+'</select>'+
         '<select class="seat-p p2">'+optionHTML("",true)+'</select>'+
@@ -625,7 +634,8 @@
     var opts=root.sessions.filter(function(s){return s.games.length>0||s.id===root.currentId;}).sort(function(a,b){return b.ts-a.ts;});
     sel.innerHTML=opts.map(function(s){
       var label=s.label||fmtDay(s.ts);
-      return '<option value="'+s.id+'"'+(s.id===root.currentId?" selected":"")+'>'+esc(label)+'('+activeCount(s)+'半荘)</option>';
+      var mk=(s.mode===3)?"・3人":"";
+      return '<option value="'+s.id+'"'+(s.id===root.currentId?" selected":"")+'>'+esc(label)+'('+activeCount(s)+'半荘'+mk+')</option>';
     }).join("");
   }
   function renderVersions(){
@@ -735,6 +745,7 @@
   }
   function enterEdit(gid){
     var g=state.games.filter(function(x){return x.id===gid;})[0]; if(!validGame(g))return;
+    if(g.seats.length!==modeCount()){toast("この卓の形式と不一致");return;}
     editingGameId=gid;
     document.getElementById("entryCard").classList.add("editing");
     document.getElementById("saveBtn").textContent="更新";
@@ -771,15 +782,29 @@
       commitRoot(function(rt){ if(rt.sessions.some(function(s){return s.id===id;}))rt.currentId=id; return pruneEmpty(rt,rt.currentId); }, "卓切替");
     });
     document.getElementById("newSessionBtn").addEventListener("click",function(){
-      var keep=confirm("新しい卓を開始｡\n\nメンバーを引き継ぐ → OK\n空(メンバーなし)から → キャンセル");
-      if(editingGameId)exitEdit();
-      commitRoot(function(rt){
-        var cur=rt.sessions.filter(function(s){return s.id===rt.currentId;})[0];
-        var ns=newSession(keep&&cur?cur.players:null);
-        rt.sessions.push(ns); rt.currentId=ns.id;
-        return pruneEmpty(rt,ns.id);
-      }, "新しい卓");
-      toast("新しい卓を開始");
+      var modal=document.getElementById("modeModal"), opts=document.getElementById("mmOpts");
+      opts.innerHTML="";
+      [{m:4,t:"4人打ち"},{m:3,t:"3人打ち"}].forEach(function(o){
+        var btn=document.createElement("button"); btn.className="modal-opt"; btn.type="button";
+        btn.innerHTML='<span>'+o.t+'</span><span class="mo-val">'+o.m+'卓</span>';
+        btn.onclick=function(){
+          modal.hidden=true;
+          var keep=confirm("メンバーを引き継ぐ → OK\n空(メンバーなし)から → キャンセル");
+          if(editingGameId)exitEdit();
+          commitRoot(function(rt){
+            var cur=rt.sessions.filter(function(s){return s.id===rt.currentId;})[0];
+            var ns=newSession(keep&&cur?cur.players:null,o.m);
+            rt.sessions.push(ns); rt.currentId=ns.id;
+            return pruneEmpty(rt,ns.id);
+          }, "新しい卓");
+          toast("新しい卓("+o.t+")を開始");
+        };
+        opts.appendChild(btn);
+      });
+      var cancel=document.createElement("button"); cancel.className="modal-cancel"; cancel.type="button"; cancel.textContent="やめる";
+      cancel.onclick=function(){ modal.hidden=true; };
+      opts.appendChild(cancel);
+      modal.hidden=false;
     });
 
     var seatsEl=document.getElementById("entrySeats");
