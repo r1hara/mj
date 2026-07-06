@@ -483,20 +483,21 @@
   // ---- render: standings ----
   function renderStandings(){
     var s=computeStats();
-    var rows=state.players.map(function(p){var st=s[p.id];return {p:p,total:round1(st.total),played:st.played,tops:st.tops,ranks:st.ranks};});
+    var rows=state.players.map(function(p){var st=s[p.id];return {p:p,total:round1(st.total),played:st.played,tops:st.tops,ranks:st.ranks};})
+      .filter(function(r){return r.played>0;});
     rows.sort(function(a,b){if(b.total!==a.total)return b.total-a.total;return b.tops-a.tops;});
     var maxAbs=1; rows.forEach(function(r){if(Math.abs(r.total)>maxAbs)maxAbs=Math.abs(r.total);});
-    document.getElementById("totalList").innerHTML=rows.map(function(r,i){
+    document.getElementById("totalList").innerHTML=rows.length?rows.map(function(r,i){
       var rank=i+1, rcls=rank===2?"r2":rank===3?"r3":"", bar="";
       if(r.total!==0){var w=Math.min(50,Math.abs(r.total)/maxAbs*50);
         bar=r.total>0?'<span class="bfill pos" style="left:50%;width:'+w+'%"></span>':'<span class="bfill neg" style="left:'+(50-w)+'%;width:'+w+'%"></span>';}
-      var sub=r.played>0?(r.played+"半荘 ・ "+r.ranks.slice(0,modeCount()).join("-")):"記録なし";
-      return '<div class="stand'+(rank===1&&r.played>0?" lead":"")+'">'+
+      var sub=r.played+"半荘 ・ "+r.ranks.slice(0,modeCount()).join("-");
+      return '<div class="stand'+(rank===1?" lead":"")+'">'+
         '<div class="rank '+rcls+'">'+rank+'</div>'+
         '<div class="who"><div class="name">'+esc(r.p.name)+'</div><div class="sub">'+sub+'</div></div>'+
-        '<div class="total '+scoreClass(r.total)+'">'+(r.played>0?fmt(r.total):"\u00B10")+'</div>'+
+        '<div class="total '+scoreClass(r.total)+'">'+fmt(r.total)+'</div>'+
         '<div class="bar">'+bar+'</div></div>';
-    }).join("");
+    }).join(""):'<div class="empty">参加者の記録なし｡</div>';
     document.getElementById("histNote").textContent="全 "+state.games.filter(isActive).length+" 半荘";
   }
 
